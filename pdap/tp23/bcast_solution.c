@@ -63,10 +63,9 @@ else if (strcmp(bcast_implementation_name, "pipelined_ring_bcast") == 0) {
 }
 else if (strcmp(bcast_implementation_name, "asynchronous_pipelined_ring_bcast") == 0) {
 	// P_i sends to P_i+1 but using pipelining and asynchronoucity
-	/////////////////////////////////////////
-	////////// NOT IMPLEMENTED YET //////////
-	/////////////////////////////////////////
 	int sent_bytes = 0;
+	MPI_Request request[1000000];
+	int i = 0;
 	while(sent_bytes<NUM_BYTES)
 	{
 		if(sent_bytes+chunk_size>NUM_BYTES)
@@ -76,7 +75,20 @@ else if (strcmp(bcast_implementation_name, "asynchronous_pipelined_ring_bcast") 
 			MPI_Recv(buffer+sent_bytes,chunk_size, MPI_CHAR, rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 		if(rank<num_procs-1)
-			MPI_Send(buffer+sent_bytes,chunk_size, MPI_CHAR, rank+1, 0, MPI_COMM_WORLD);
+		{
+			MPI_Isend(buffer+sent_bytes,chunk_size, MPI_CHAR, rank+1, 0, MPI_COMM_WORLD,(request+i));
+		}
 		sent_bytes+=chunk_size;
+		i++;
 	}
+	for(i=0;i<NUM_BYTES/chunk_size+1;i++)
+		MPI_Wait((request+i),MPI_STATUS_IGNORE);
 }
+else if (strcmp(bcast_implementation_name, "asynchronous_pipelined_bintree_bcast") == 0) {
+///////////////////////////////////////
+//// NOT IMPLEMENTED //////////////////
+// it should be theoretically better //
+// ... but la flemme						 //
+///////////////////////////////////////
+}
+
