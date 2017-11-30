@@ -27,7 +27,7 @@ void readGraph(
   int nVtx, nEdge;
   int *adj;
   int *tempadj;
-  fscanf(file, " %d %d", pnVtx, pnEdge);
+  int trash = fscanf(file, " %d %d", pnVtx, pnEdge);
   nVtx = *pnVtx; nEdge = *pnEdge;
   int *edgeLeft = NULL, *edgeRight = NULL, *weightL = NULL;
   if (rank == 0)
@@ -53,7 +53,7 @@ void readGraph(
             tempadj[i*nVtx+j] = 0;
 
       for (i = 0; i < nEdge; i++) {
-        fscanf(file, " %d %d %d", edgeLeft + i, edgeRight + i, weightL + i);
+        int trash = fscanf(file, " %d %d %d", edgeLeft + i, edgeRight + i, weightL + i);
         tempadj[edgeLeft[i]*nVtx + edgeRight[i]] = weightL[i];
         tempadj[edgeRight[i]*nVtx + edgeLeft[i]] = weightL[i];
       }

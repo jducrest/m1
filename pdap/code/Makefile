@@ -6,5 +6,8 @@ mst: mst-skeleton.c mst-solution.c
 clean:
 	rm mst
 
-run:
-	mpirun -np 1 ./mst graph.in prim-seq
+sp:
+	mpirun -np 1 ./mst simple.in prim-seq
+
+sk:
+	mpirun -np 1 ./mst simple.in kruskal-seq
