@@ -6,8 +6,14 @@ mst: mst-skeleton.c mst-solution.c
 clean:
 	rm mst
 
-sp:
+simplep:
 	mpirun -np 1 ./mst simple.in prim-seq
 
-sk:
+simplek:
 	mpirun -np 1 ./mst simple.in kruskal-seq
+
+valoup:
+	mpirun -np 1 ./mst valou.in prim-seq
+
+valouk:
+	mpirun -np 1 ./mst valou.in kruskal-seq

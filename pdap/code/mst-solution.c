@@ -41,56 +41,95 @@ void computeMST(
       }
     }
     // BEGIN IMPLEMENTATION HERE
-	 int i,j,n,min,imin;
+	 /*************************************/
+	 /*                                   */
+	 /*         PRIM'S ALGORITHM          */
+	 /*                                   */
+	 /*************************************/
+
+	 int i,j,n;
 	 int* T=malloc(sizeof(int)*N);
 	 int* D=malloc(sizeof(int)*N);
-
-	 //init
+	 int* Ne=malloc(sizeof(int)*N);
+	 /*INIT**********************/
+	 /* 0 is in the tree        */
+	 /* everybody else is not   */
+	 /* we update the distances */
+	 /***************************/
+	 T[0] = 1;
+	 D[0] = INT_MAX;
+	 Ne[0] = INT_MAX;
 	 for(i=1;i<N;i++)
 	 {
 		T[i] = 0;
-		D[i] = INT_MAX;
+		if(adj[i+0*N] != 0)
+		{
+			D[i] = adj[i+0*N];
+			Ne[i] = 0;
+		}
+		else
+		{
+			D[i] = INT_MAX;
+			Ne[i] = INT_MAX;
+		}
 	 }
-
-	 T[0] = 1;
-	 D[0] = INT_MAX;
-	 for(i=0;i<N;i++)
-	 for(j=i+1;j<N;j++)
-	 {
-		if(adj[i*N+j] != 0 && adj[i*N+j]<D[j])
-			D[j] = adj[i*N+j];
-	 }
-
-	 // main while
+	 /* MAIN LOOP ******************************************/
+	 /* find n-1 edges to build the tree                   */
+	 /* we denote the edge by (u,v) where u is in the tree */
+	 /* at the beginning, umin = 0, vmin = 0, dmin=INT_MAX */
+	 /* this ensure that the first existing edge is picked */
+	 /******************************************************/
 	 for(n=0;n<N-1;n++)
 	 {
-		// find best vertex to add
-		imin = 0;
+		int umin = 0;  
+		int vmin = 0;
 		for(i=1;i<N;i++)
 		{
-			if( !T[i] && D[i]<D[imin] )
-				imin = i;
+			if( !T[i] && D[i]<D[vmin] ) // clear candidate
+			{
+				umin = Ne[i];
+				vmin = i;
+end_datatype		}
+			if( !T[i] && D[i]==D[vmin] ) //potential candidate (need to check lex order)
+			{
+				int nei = Ne[i];
+				int u = MIN(i,nei);
+				int v = MAX(i,nei);
+				if(u<MIN(umin,vmin) || (u==MIN(umin,vmin) && v<MAX(umin,vmin)))
+				{
+					umin = nei;
+					vmin = i;
+				}
+			}
 		}
-		// find relative edge
-		for(i=0;i<N;i++)
-		{
-			if(T[i] && adj[i*N+imin]==D[imin])
-				break;
-		}
-		// update T and D
-		printf("%d %d\n",MIN(i,imin),MAX(i,imin));
-		T[imin]=1;
+		/* OUTPUT SOLUTION ****************/
+		printf("%d %d\n",MIN(umin,vmin),MAX(umin,vmin));
+
+		/* UPDATE *****************************************/
+		/* we update T and D and V being careful with     */
+		/* lex order                                      */
+		/**************************************************/
+		T[vmin]=1;
 		for(j=1;j<N;j++)
 		{
-			if(adj[imin*N+j]!=0 && adj[imin*N+j]<D[j])
-				D[j] = adj[imin*N+j];
+			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]<D[j])
+			{
+				D[j] = adj[vmin*N+j];
+				Ne[j] = vmin;
+			}
+			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]==D[j])
+			{
+				Ne[j] = MIN(vmin,Ne[j]);
+			}
 		}
 	 }
 
-
-
+	 /* FREE **********************/
+	 /* usual C boring stuff      */
+	 /*****************************/
 	 free(T);
 	 free(D);
+	 free(Ne);
 
   } else if (strcmp(algoName, "kruskal-seq") == 0) { // Sequential Kruskal's algorithm
     if (procRank == 0) {
@@ -123,15 +162,7 @@ void computeMST(
 			k++;
 		}
 	 }
-	//printf("############## Edges before #################\n");
-	 //for(j=0;j<M;j++)
-		//printf("%d %d %d\n",E[j].i,E[j].j,E[j].w);
-	 // we sort E
 	 qsort(E,M,sizeof(edge),weightcomp);
-	 //printf("################ Edges after sort #####################\n");
-	 //for(j=0;j<M;j++)
-	 //printf("%d %d %d\n",E[j].i,E[j].j,E[j].w);
- 
 	n=0;k=0;
 	while(n<N-1 && k<M)
 	{
@@ -154,6 +185,117 @@ void computeMST(
 	 
   } else if (strcmp(algoName, "prim-par") == 0) { // Parallel Prim's algorithm
     // BEGIN IMPLEMENTATION HERE
+
+	 /*************************************/
+	 /*                                   */
+	 /*     PRIM'S PAR ALGORITHM          */
+	 /*                                   */
+	 /*************************************/
+    if(! (N%p))
+		printf("we are fucked !\n");
+	 int sizeofdata = N*(N/p)
+	 int Ns = N/p;
+	 int* adjs = malloc(sizeof(int)*sizeofdata);
+	 MPI_Scatter(adj,sizeofdata,MPI_INT,ajds,sizeofdata,MPI_INT,0,MPI_COMM_WORLD);
+
+	 int i,j,n;
+	 int* T=malloc(sizeof(int)*N);
+	 int* D=malloc(sizeof(int)*Ns);
+	 int* Ne=malloc(sizeof(int)*Ns);
+
+// TO BE CONTINUED
+
+	 /*INIT**********************/
+	 /* 0 is in the tree        */
+	 /* everybody else is not   */
+	 /* we update the distances */
+	 /***************************/
+	 T[0] = 1;
+	 D[0] = INT_MAX;
+	 Ne[0] = INT_MAX;
+	 for(i=1;i<N;i++)
+	 {
+		T[i] = 0;
+		if(adj[i+0*N] != 0)
+		{
+			D[i] = adj[i+0*N];
+			Ne[i] = 0;
+		}
+		else
+		{
+			D[i] = INT_MAX;
+			Ne[i] = INT_MAX;
+		}
+	 }
+	 /* MAIN LOOP ******************************************/
+	 /* find n-1 edges to build the tree                   */
+	 /* we denote the edge by (u,v) where u is in the tree */
+	 /* at the beginning, umin = 0, vmin = 0, dmin=INT_MAX */
+	 /* this ensure that the first existing edge is picked */
+	 /******************************************************/
+	 for(n=0;n<N-1;n++)
+	 {
+		int umin = 0;  
+		int vmin = 0;
+		for(i=1;i<N;i++)
+		{
+			if( !T[i] && D[i]<D[vmin] ) // clear candidate
+			{
+				umin = Ne[i];
+				vmin = i;
+			}
+			if( !T[i] && D[i]==D[vmin] ) //potential candidate (need to check lex order)
+			{
+				int nei = Ne[i];
+				int u = MIN(i,nei);
+				int v = MAX(i,nei);
+				if(u<MIN(umin,vmin) || (u==MIN(umin,vmin) && v<MAX(umin,vmin)))
+				{
+					umin = nei;
+					vmin = i;
+				}
+			}
+		}
+		/* OUTPUT SOLUTION ****************/
+		printf("%d %d\n",MIN(umin,vmin),MAX(umin,vmin));
+
+		/* UPDATE *****************************************/
+		/* we update T and D and V being careful with     */
+		/* lex order                                      */
+		/**************************************************/
+		T[vmin]=1;
+		for(j=1;j<N;j++)
+		{
+			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]<D[j])
+			{
+				D[j] = adj[vmin*N+j];
+				Ne[j] = vmin;
+			}
+			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]==D[j])
+			{
+				Ne[j] = MIN(vmin,Ne[j]);
+			}
+		}
+	 }
+
+	 /* FREE **********************/
+	 /* usual C boring stuff      */
+	 /*****************************/
+	 free(T);
+	 free(D);
+	 free(Ne);
+
+
+
+
+
+
+
+
+
+
+
+
 
   } else if (strcmp(algoName, "kruskal-par") == 0) { // Parallel Kruskal's algorithm
     // BEGIN IMPLEMENTATION HERE
