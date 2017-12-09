@@ -17,3 +17,6 @@ valoup:
 
 valouk:
 	mpirun -np 1 ./mst valou.in kruskal-seq
+
+simplepp:
+	mpirun -np 5 ./mst simple.in prim-par
