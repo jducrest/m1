@@ -204,20 +204,6 @@ void computeMST(
 	 int* adjs = malloc(sizeof(int)*sizeofdata);
 	 // Now everybody got his adj small
 	 int i,j,n;
-	 MPI_Barrier(MPI_COMM_WORLD);
-	 if(procRank==0)
-	 {
-	 for(i=0;i<N;i++)
-	 {
-	 printf("\n");
-	 for(j=0;j<N;j++)
-	 {
-		printf("%d ",adj[i+N*j]);
-	 }
-	 }
-	 }
-	 MPI_Barrier(MPI_COMM_WORLD);
-	 MPI_Scatter(adj,sizeofdata,MPI_INT,adjs,sizeofdata,MPI_INT,0,MPI_COMM_WORLD);
 	  
 	 for(n=0;n<numProcs;n++)
 	 {
