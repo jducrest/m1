@@ -28,12 +28,55 @@ int sed_lex(int u, int v, int w, int u_, int v_, int w_) // answer first<second
 	return 0;
 }
 
-int weightcomp(const void* u,const void* v)
+
+int weightcomp(const void* a, const void* b)
 {
-	if(((edge*)u)->w > ((edge*)v)->w)
+	int i;
+	edge* a_ = (edge*)a;
+	edge* b_ = (edge*)b;
+	int u,u_,v,v_,w,w_;
+	u  = MIN(a_->i,a_->j);
+	v  = MAX(a_->i,a_->j);
+	u_ = MIN(b_->i,b_->j);
+	v_ = MAX(b_->i,b_->j);
+	w  = a_->w;
+	w_ = b_->w;
+
+	if(w  >  w_)
 		return 1;
-	else
-		return 0;
+	if(w == w_)
+	{
+		if(u > u_)
+			return 1;
+		if(u == u_ && v > v_)
+			return 1;
+	}
+	return 0;
+}
+void edge_reduce(edge* in, edge* inout, int* len,MPI_Datatype* dptr)
+{
+	int i;
+	int u,u_,v,v_,w,w_;
+	u  = MIN(in[i].i,in[i].j);
+	v  = MAX(in[i].i,in[i].j);
+	u_ = MIN(inout[i].i,inout[i].j);
+	v_ = MAX(inout[i].i,inout[i].j);
+	w  = in[i].w;
+	w_ = inout[i].w;
+
+	for(i=0;i<*len;i++)
+	{
+	if(w  >  w_)
+		continue;
+	if(w == w_)
+	{
+		if(u > u_)
+			continue;
+		if(u == u_ && v > v_)
+			continue;
+	}
+	inout[i] = in[i];
+	}
 }
 
 void computeMST(
@@ -45,6 +88,13 @@ void computeMST(
   int procRank, numProcs;
   MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
   MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+
+  MPI_Datatype edge_type;
+  MPI_Type_contiguous(3,MPI_INT,&edge_type);
+  MPI_Type_commit(&edge_type);
+
+  MPI_Op edge_red;
+  MPI_Op_create( (MPI_User_function *) edge_reduce, 1, &edge_red );
 
   if (strcmp(algoName, "prim-seq") == 0) { // Sequential Prim's algorithm
     if (procRank == 0) {
@@ -141,7 +191,11 @@ void computeMST(
         MPI_Abort(MPI_COMM_WORLD, 1);
       }
     }
-    // BEGIN IMPLEMENTATION HERE
+    /*****************************************/
+	 /*                                       */
+	 /*               KRUSKAL                 */
+	 /*              goto k                   */
+	 /*****************************************/
 	 int i,j,k,n,min,imin;
 	 // T is the tree, S is the representant set, E the set of edges
 	 int* T=malloc(sizeof(int)*N);
@@ -157,11 +211,11 @@ void computeMST(
 	 for(i=0;i<N;i++)
 	 for(j=i;j<N;j++)
 	 {
-		if(adj[i*N+j]!=0)
+		if(W(i,j)!=0)
 		{
 			E[k].i = i;
 			E[k].j = j;
-			E[k].w = adj[i*N+j];
+			E[k].w = W(i,j);
 			k++;
 		}
 	 }
@@ -173,16 +227,15 @@ void computeMST(
 		int y = E[k].j;
 		int w = E[k].w;
 		k++;  // we prepare to look into next edge
-		if(S[x]==S[y]) // loop or autoloop
-			continue;
-		n++; // we found a good edge... happy =)
-		int m  = MIN(S[x],S[y]);
-		for(i=0;i<N;i++) // we update the disjoint set structure "comme un sac"
-			if(S[i]==S[x] || S[i]==S[y])
-				S[i] = m;
-
-
-		printf("%d %d\n",MIN(x,y),MAX(x,y));
+		while(S[x]!=S[S[x]])
+			S[x] = S[S[x]];
+		while(S[y]!=S[S[y]])
+			S[y] = S[S[y]];
+		if(S[x]!=S[y])
+		{
+			n++; // we found a good edge... happy =)
+			printf("%d %d\n",MIN(x,y),MAX(x,y));
+		}
 	}
 
 	 
@@ -199,6 +252,7 @@ void computeMST(
 	 // Now everybody got his adj small
 
 	 int i,j,n;
+    edge e;
 	 int* T=malloc(sizeof(int)*Ns);
 	 int* D=malloc(sizeof(int)*Ns);
 	 int* Ne=malloc(sizeof(int)*Ns);
@@ -261,7 +315,7 @@ void computeMST(
 			goto gatherpp;
 		}
 		// for the rest we compare to what we know
-		for(i=0;i<Ns;i++)
+		for(i=i;i<Ns;i++)
 		{
 			if(!T[i] && D[i]<D[vmin-offset] ) // clear candidate
 			{
@@ -282,7 +336,13 @@ void computeMST(
 		}
 		dmin = D[vmin-offset];
 		gatherpp:
-		/* GATHER INFO */
+		
+		e.i = umin;
+		e.j = vmin;
+		e.w = dmin;
+		MPI_Allreduce(&e,&e,1,edge_type,edge_red,MPI_COMM_WORLD);
+		/* noob method 
+		// GATHER INFO 
 		MPI_Gather(&umin,1,MPI_INT,us,1,MPI_INT,0,MPI_COMM_WORLD);
 		MPI_Gather(&vmin,1,MPI_INT,vs,1,MPI_INT,0,MPI_COMM_WORLD);
 		MPI_Gather(&dmin,1,MPI_INT,ds,1,MPI_INT,0,MPI_COMM_WORLD);
@@ -298,8 +358,10 @@ void computeMST(
 					imin = i;
 			}
 			// we found the best guy
-			/* OUTPUT SOLUTION ****************/
-			printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
+			//  OUTPUT SOLUTION 
+			
+			if(procRank==0)
+				printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
 		}
 		// we send it to everybody
 		umin = us[imin];
@@ -307,11 +369,17 @@ void computeMST(
 		MPI_Bcast(&umin,1,MPI_INT,0,MPI_COMM_WORLD);
 		MPI_Bcast(&vmin,1,MPI_INT,0,MPI_COMM_WORLD);
       //Now that everybody knows who it is we can print and update
-
+      */
 		/* UPDATE *****************************************/
 		/* we update T and D and V being careful with     */
 		/* lex order                                      */
 		/**************************************************/
+		umin = e.i;
+		vmin = e.j;
+		if(procRank==0)
+			printf("%d %d\n",MIN(umin,vmin),MAX(umin,vmin));
+			//printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
+		
 		if(vmin/Ns==procRank) //it's somebody from this proc that was chosen
 	   {
 		   T[vmin-offset]=1;
@@ -351,6 +419,58 @@ void computeMST(
 
   } else if (strcmp(algoName, "kruskal-par") == 0) { // Parallel Kruskal's algorithm
     // BEGIN IMPLEMENTATION HERE
+	 /*********************************************/
+	 /*                                           */
+	 /*               KRUSKAL PAR                 */
+    /*               goto kp                     */
+	 /*********************************************/
+
+	 /* PHASE 1 : ******************************/
+	 /* Do Kruskal on subset of edges          */
+	 /******************************************/
+	 
+	 int i,j,k,n,min,imin;
+	 // T is the tree, S is the representant set, E the set of edges
+	 int* T=malloc(sizeof(int)*N);
+	 int* S = malloc(sizeof(int)*N);
+	 edge* E=malloc(sizeof(edge)*M);
+	 // we initialize T and E
+	 for(i=0;i<N;i++)
+	 {
+		T[i]=0;
+		S[i]=i;
+	 }
+	 k = 0;
+	 for(i=0;i<N;i++)
+	 for(j=i;j<N;j++)
+	 {
+		if(W(i,j)!=0)
+		{
+			E[k].i = i;
+			E[k].j = j;
+			E[k].w = W(i,j);
+			k++;
+		}
+	 }
+	 qsort(E,M,sizeof(edge),weightcomp);
+	n=0;k=0;
+	while(n<N-1 && k<M)
+	{
+		int x = E[k].i;
+		int y = E[k].j;
+		int w = E[k].w;
+		k++;  // we prepare to look into next edge
+		while(S[x]!=S[S[x]])
+			S[x] = S[S[x]];
+		while(S[y]!=S[S[y]])
+			S[y] = S[S[y]];
+		if(S[x]!=S[y])
+		{
+			n++; // we found a good edge... happy =)
+			printf("%d %d\n",MIN(x,y),MAX(x,y));
+		}
+	}
+
 
   } else { // Invalid algorithm name
     if (procRank == 0) {
