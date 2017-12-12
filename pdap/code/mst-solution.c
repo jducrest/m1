@@ -8,12 +8,25 @@
 #include <limits.h>
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
+#define W(u,v) adj[u*N+v]
 typedef struct 
 {
 int i;
 int j;
 int w;
 } edge;
+
+int sed_lex(int u, int v, int w, int u_, int v_, int w_) // answer first<second
+{
+	if(w<w_)
+		return 1;
+	if(w==w_ && MIN(u,v)<MIN(u_,v_))
+		return 1;
+	if(w==w_ && MIN(u,v)==MIN(u_,v_) && MAX(u,v)<MAX(u_,v_))
+		return 1;
+
+	return 0;
+}
 
 int weightcomp(const void* u,const void* v)
 {
@@ -48,12 +61,6 @@ void computeMST(
 	 /*************************************/
 
 	 int i,j,n;
-	 for(i=0;i<N;i++)
-	 {
-		printf("\n");
-		for(j=0;j<N;j++)
-		printf("%d ",adj[i+N*j]);
-	 }
 	 int* T=malloc(sizeof(int)*N);
 	 int* D=malloc(sizeof(int)*N);
 	 int* Ne=malloc(sizeof(int)*N);
@@ -63,14 +70,14 @@ void computeMST(
 	 /* we update the distances */
 	 /***************************/
 	 T[0] = 1;
-	 D[0] = INT_MAX;
 	 Ne[0] = INT_MAX;
+	 D[0] = INT_MAX;
 	 for(i=1;i<N;i++)
 	 {
 		T[i] = 0;
-		if(adj[i+0*N] != 0)
+		if(W(0,i)!= 0)
 		{
-			D[i] = adj[i+0*N];
+			D[i] = W(0,i);
 			Ne[i] = 0;
 		}
 		else
@@ -89,23 +96,13 @@ void computeMST(
 	 {
 		int umin = 0;  
 		int vmin = 0;
+		int u,v,w;
 		for(i=1;i<N;i++)
 		{
-			if( !T[i] && D[i]<D[vmin] ) // clear candidate
+			if(!T[i] && sed_lex(Ne[i],i,D[i],umin,vmin,D[vmin]))
 			{
 				umin = Ne[i];
 				vmin = i;
-			}
-			if( !T[i] && D[i]==D[vmin] ) //potential candidate (need to check lex order)
-			{
-				int nei = Ne[i];
-				int u = MIN(i,nei);
-				int v = MAX(i,nei);
-				if(u<MIN(umin,vmin) || (u==MIN(umin,vmin) && v<MAX(umin,vmin)))
-				{
-					umin = nei;
-					vmin = i;
-				}
 			}
 		}
 		/* OUTPUT SOLUTION ****************/
@@ -118,12 +115,12 @@ void computeMST(
 		T[vmin]=1;
 		for(j=1;j<N;j++)
 		{
-			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]<D[j])
+			if(W(vmin,j)!=0 && W(vmin,j)<D[j])
 			{
-				D[j] = adj[vmin*N+j];
+				D[j] = W(vmin,j);
 				Ne[j] = vmin;
 			}
-			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]==D[j])
+			if(W(vmin,j)!=0 && W(vmin,j)==D[j])
 			{
 				Ne[j] = MIN(vmin,Ne[j]);
 			}
@@ -197,44 +194,14 @@ void computeMST(
 	 /*     PRIM'S PAR ALGORITHM          */
 	 /*     goto pp                       */
 	 /*************************************/
-    if((N%numProcs))
-		printf("we are fucked !\n");
-	 int sizeofdata = N*(N/numProcs);
-	 int Ns = N/numProcs;
-	 int* adjs = malloc(sizeof(int)*sizeofdata);
+	 int Ns = procRank != numProcs - 1 ? ceil((float)N/numProcs) : N - ceil((float)N/numProcs)*(numProcs-1);
+	 int offset = procRank * ceil((float)N / numProcs);
 	 // Now everybody got his adj small
-	 int i,j,n;
-	 MPI_Barrier(MPI_COMM_WORLD);
-	 if(procRank==0)
-	 {
-	 for(i=0;i<N;i++)
-	 {
-	 printf("\n");
-	 for(j=0;j<N;j++)
-	 {
-		printf("%d ",adj[i+N*j]);
-	 }
-	 }
-	 }
-	 MPI_Barrier(MPI_COMM_WORLD);
-	 MPI_Scatter(adj,sizeofdata,MPI_INT,adjs,sizeofdata,MPI_INT,0,MPI_COMM_WORLD);
-	  
-	 for(n=0;n<numProcs;n++)
-	 {
-	   MPI_Barrier(MPI_COMM_WORLD);
-		if(procRank ==n)
-		{
-			printf("rank n%d:\n",procRank);
-			for(i=0;i<Ns;i++)
-			for(j=0;j<N;j++)
-			printf("%d\n",adjs[i*N+j]);
 
-		}
-	 }
-	 MPI_Barrier(MPI_COMM_WORLD);
-	 int* T=malloc(sizeof(int)*N);
-	 int* D=malloc(sizeof(int)*(Ns+1));
-	 int* Ne=malloc(sizeof(int)*(Ns+1));
+	 int i,j,n;
+	 int* T=malloc(sizeof(int)*Ns);
+	 int* D=malloc(sizeof(int)*Ns);
+	 int* Ne=malloc(sizeof(int)*Ns);
 	 // thoses are the candidates that we send back to proc 0 for check
 	 int* us = malloc(sizeof(int)*numProcs);
 	 int* vs = malloc(sizeof(int)*numProcs);
@@ -244,67 +211,84 @@ void computeMST(
 	 /* 0 is in the tree        */
 	 /* everybody else is not   */
 	 /* we update the distances */
-	 /***************************/
-	 T[Ns] = 1;
-	 D[Ns] = INT_MAX;
-	 Ne[Ns] = INT_MAX;
-	 for(i=0;i<N;i++)
+	 /***************************/ 
+	 W(0,offset) = INT_MAX; // this is used in case we can't fine an edge to add
+	 
+	 for(i=0;i<Ns;i++)
+	 {
 		T[i] = 0;
+		D[i] = INT_MAX;
+		Ne[i] = INT_MAX;
+	 }
 	 // Now everybody initialize his small thingies !!! Ns is just a init value, index range from 0 to <Ns
 	 for(i=0;i<Ns;i++)
 	 {
-		if(adjs[0+i*N] != 0)
+		if(W(i,0) != 0)
 		{
-			D[i] = adjs[0+i*N];
+			D[i] = W(i,0);
 			Ne[i] = 0;
 		}
-		else
-		{
-			D[i] = INT_MAX;
-			Ne[i] = INT_MAX;
-		}
 	 }
-	 T[0] = 1;
+	 if(procRank==0)
+	 {
+		T[0] = 1;
+	 }
 	 /* MAIN LOOP ******************************************/
 	 /* find n-1 edges to build the tree                   */
 	 /* we denote the edge by (u,v) where u is in the tree */
 	 /* at the beginning, umin = 0, vmin = 0, dmin=INT_MAX */
 	 /* this ensure that the first existing edge is picked */
 	 /******************************************************/
+	 
 	 for(n=0;n<N-1;n++)
 	 {
-		int umin = Ns;  
-		int vmin = Ns;
+		int umin,vmin,dmin;
+		// we find a potential edge
 		for(i=0;i<Ns;i++)
 		{
-			if( !T[i] && D[i]<D[vmin] ) // clear candidate
+			if(!T[i])
 			{
 				umin = Ne[i];
-				vmin = i;
+				vmin = i+offset;
+				break;
 			}
-			if( !T[i] && D[i]==D[vmin] ) //potential candidate (need to check lex order)
+		}
+		if(i==Ns) // we couldn't find an edge give back error value
+		{
+			umin = INT_MAX;
+			vmin = INT_MAX;
+			dmin = INT_MAX;
+			goto gatherpp;
+		}
+		// for the rest we compare to what we know
+		for(i=0;i<Ns;i++)
+		{
+			if(!T[i] && D[i]<D[vmin-offset] ) // clear candidate
+			{
+				umin = Ne[i];
+				vmin = i+offset;
+			}
+			if(!T[i] && D[i]==D[vmin-offset] ) //potential candidate (need to check lex order)
 			{
 				int nei = Ne[i];
-				int u = MIN(i,nei);
-				int v = MAX(i,nei);
+				int u = MIN(i+offset,nei);
+				int v = MAX(i+offset,nei);
 				if(u<MIN(umin,vmin) || (u==MIN(umin,vmin) && v<MAX(umin,vmin)))
 				{
 					umin = nei;
-					vmin = i;
+					vmin = i+offset;
 				}
 			}
 		}
+		dmin = D[vmin-offset];
+		gatherpp:
 		/* GATHER INFO */
 		MPI_Gather(&umin,1,MPI_INT,us,1,MPI_INT,0,MPI_COMM_WORLD);
 		MPI_Gather(&vmin,1,MPI_INT,vs,1,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Gather(&D[vmin],1,MPI_INT,ds,1,MPI_INT,0,MPI_COMM_WORLD);
-	   printf("my Dmin : %d!!!\n",D[vmin]); 	
+		MPI_Gather(&dmin,1,MPI_INT,ds,1,MPI_INT,0,MPI_COMM_WORLD);
 		int imin = 0;
 		if(procRank==0)
 		{
-			printf("\n the edges : \n");
-			for(i=0;i<numProcs;i++)
-				printf("%d %d %d\n",us[i],vs[i],ds[i]);
 			for(i=1;i<numProcs;i++)
 			{
 				if(ds[i]<ds[imin])
@@ -315,7 +299,7 @@ void computeMST(
 			}
 			// we found the best guy
 			/* OUTPUT SOLUTION ****************/
-			printf("Arete! : %d %d\n",MIN(umin,vmin),MAX(umin,vmin));
+			printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
 		}
 		// we send it to everybody
 		umin = us[imin];
@@ -328,15 +312,18 @@ void computeMST(
 		/* we update T and D and V being careful with     */
 		/* lex order                                      */
 		/**************************************************/
-		T[vmin]=1;
+		if(vmin/Ns==procRank) //it's somebody from this proc that was chosen
+	   {
+		   T[vmin-offset]=1;
+		}
 		for(j=0;j<Ns;j++)
 		{
-			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]<D[j])
+			if(adj[vmin+j*N]!=0 && adj[vmin+j*N]<D[j])
 			{
-				D[j] = adj[vmin*N+j];
+				D[j] = adj[vmin+j*N];
 				Ne[j] = vmin;
 			}
-			if(adj[vmin*N+j]!=0 && adj[vmin*N+j]==D[j])
+			if(adj[vmin+j*N]!=0 && adj[vmin+j*N]==D[j])
 			{
 				Ne[j] = MIN(vmin,Ne[j]);
 			}

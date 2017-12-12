@@ -6,6 +6,15 @@ mst: mst-skeleton.c mst-solution.c
 clean:
 	rm mst
 
+graphp:
+	mpirun -np 1 ./mst graph.in prim-seq
+
+graphk:
+	mpirun -np 1 ./mst graph.in kruskal-seq
+
+graphpp:
+	mpirun -np 5 ./mst graph.in prim-par
+
 simplep:
 	mpirun -np 1 ./mst simple.in prim-seq
 
@@ -20,3 +29,6 @@ valouk:
 
 simplepp:
 	mpirun -np 5 ./mst simple.in prim-par
+
+valoupp:
+	mpirun -np 10 ./mst valou.in prim-par

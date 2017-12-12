@@ -1,3 +1,4 @@
+mpirun -np 10 ./mst valou.in prim-par
 0 562
 274 562
 0 651
@@ -997,4 +998,4 @@
 398 682
 176 614
 736 918
-computeMST took 6.969213e-03 seconds.
+computeMST took 4.924798e-02 seconds.
