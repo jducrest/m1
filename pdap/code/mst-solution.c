@@ -31,7 +31,6 @@ int sed_lex(int u, int v, int w, int u_, int v_, int w_) // answer first<second
 
 int weightcomp(const void* a, const void* b)
 {
-	int i;
 	edge* a_ = (edge*)a;
 	edge* b_ = (edge*)b;
 	int u,u_,v,v_,w,w_;
@@ -220,13 +219,16 @@ void computeMST(
 		}
 	 }
 	 qsort(E,M,sizeof(edge),weightcomp);
+	 printf("QSORT:\n");
+	 //for(i=0;i<M;i++)
+	//	printf("%d %d %d\n", E[i].w, E[i].i, E[i].j);
 	n=0;k=0;
-	while(n<N-1 && k<M)
+	while(n<N-1)
 	{
 		int x = E[k].i;
 		int y = E[k].j;
 		int w = E[k].w;
-		k++;  // we prepare to look into next edge
+		k++;// we prepare to look into next edge
 		while(S[x]!=S[S[x]])
 			S[x] = S[S[x]];
 		while(S[y]!=S[S[y]])
@@ -234,7 +236,9 @@ void computeMST(
 		if(S[x]!=S[y])
 		{
 			n++; // we found a good edge... happy =)
+			S[S[MAX(x,y)]]=MIN(x,y);
 			printf("%d %d\n",MIN(x,y),MAX(x,y));
+
 		}
 	}
 
@@ -469,6 +473,10 @@ void computeMST(
 			n++; // we found a good edge... happy =)
 			printf("%d %d\n",MIN(x,y),MAX(x,y));
 		}
+		int m = MIN(S[x],S[y]);
+		for(i=0;i<N;i++)
+			if(S[i]==S[x] || S[i] == S[y])
+				S[i] = m;
 	}
 
 
