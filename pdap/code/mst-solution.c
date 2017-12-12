@@ -345,35 +345,7 @@ void computeMST(
 		e.j = vmin;
 		e.w = dmin;
 		MPI_Allreduce(&e,&e,1,edge_type,edge_red,MPI_COMM_WORLD);
-		/* noob method 
-		// GATHER INFO 
-		MPI_Gather(&umin,1,MPI_INT,us,1,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Gather(&vmin,1,MPI_INT,vs,1,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Gather(&dmin,1,MPI_INT,ds,1,MPI_INT,0,MPI_COMM_WORLD);
-		int imin = 0;
-		if(procRank==0)
-		{
-			for(i=1;i<numProcs;i++)
-			{
-				if(ds[i]<ds[imin])
-					imin = i;
-				if(ds[i] == ds[imin])
-				if(MIN(us[i],vs[i]) < MIN(us[imin],vs[imin]) ||( MIN(us[i],vs[i]) == MIN(us[imin],vs[imin]) && MAX(us[i],vs[i])< MAX(us[imin],vs[imin])))
-					imin = i;
-			}
-			// we found the best guy
-			//  OUTPUT SOLUTION 
-			
-			if(procRank==0)
-				printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
-		}
-		// we send it to everybody
-		umin = us[imin];
-		vmin = vs[imin];
-		MPI_Bcast(&umin,1,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(&vmin,1,MPI_INT,0,MPI_COMM_WORLD);
-      //Now that everybody knows who it is we can print and update
-      */
+		
 		/* UPDATE *****************************************/
 		/* we update T and D and V being careful with     */
 		/* lex order                                      */
@@ -382,7 +354,6 @@ void computeMST(
 		vmin = e.j;
 		if(procRank==0)
 			printf("%d %d\n",MIN(umin,vmin),MAX(umin,vmin));
-			//printf("%d %d\n",MIN(us[imin],vs[imin]),MAX(us[imin],vs[imin]));
 		
 		if(vmin/Ns==procRank) //it's somebody from this proc that was chosen
 	   {
@@ -390,12 +361,12 @@ void computeMST(
 		}
 		for(j=0;j<Ns;j++)
 		{
-			if(adj[vmin+j*N]!=0 && adj[vmin+j*N]<D[j])
+			if(W(j,vmin)!=0 && W(j,vmin)<D[j])
 			{
-				D[j] = adj[vmin+j*N];
+				D[j] = W(j,vmin);
 				Ne[j] = vmin;
 			}
-			if(adj[vmin+j*N]!=0 && adj[vmin+j*N]==D[j])
+			if(W(j,vmin)!=0 && W(j,vmin)==D[j])
 			{
 				Ne[j] = MIN(vmin,Ne[j]);
 			}
@@ -409,18 +380,6 @@ void computeMST(
 	 free(D);
 	 free(Ne);
 
-
-
-
-
-
-
-
-
-
-
-
-
   } else if (strcmp(algoName, "kruskal-par") == 0) { // Parallel Kruskal's algorithm
     // BEGIN IMPLEMENTATION HERE
 	 /*********************************************/
@@ -433,19 +392,19 @@ void computeMST(
 	 /* Do Kruskal on subset of edges          */
 	 /******************************************/
 	 
+	 int Ns = procRank != numProcs - 1 ? ceil((float)N/numProcs) : N - ceil((float)N/numProcs)*(numProcs-1);
+	 int offset = procRank * ceil((float)N / numProcs);
+
 	 int i,j,k,n,min,imin;
-	 // T is the tree, S is the representant set, E the set of edges
-	 int* T=malloc(sizeof(int)*N);
-	 int* S = malloc(sizeof(int)*N);
-	 edge* E=malloc(sizeof(edge)*M);
+	 // S is the representant set, E the set of edges
+	 int*  S  = malloc(sizeof(int)*N);
+	 edge* E  = malloc(sizeof(edge)*M);
+	 edge* E1 = malloc(sizeof(edge)*M);
+	 edge* E2 = malloc(sizeof(edge)*M);
+
 	 // we initialize T and E
-	 for(i=0;i<N;i++)
-	 {
-		T[i]=0;
-		S[i]=i;
-	 }
 	 k = 0;
-	 for(i=0;i<N;i++)
+	 for(i=0;i<Ns;i++)
 	 for(j=i;j<N;j++)
 	 {
 		if(W(i,j)!=0)
@@ -456,14 +415,17 @@ void computeMST(
 			k++;
 		}
 	 }
+	 int K = k; // nb of edges
+	 for(i=0;i<N;i++)
+		S[i]=i;
 	 qsort(E,M,sizeof(edge),weightcomp);
 	n=0;k=0;
-	while(n<N-1 && k<M)
+	while(n<N-1 && k<K)
 	{
 		int x = E[k].i;
 		int y = E[k].j;
 		int w = E[k].w;
-		k++;  // we prepare to look into next edge
+		k++;// we prepare to look into next edge
 		while(S[x]!=S[S[x]])
 			S[x] = S[S[x]];
 		while(S[y]!=S[S[y]])
@@ -471,14 +433,36 @@ void computeMST(
 		if(S[x]!=S[y])
 		{
 			n++; // we found a good edge... happy =)
+			S[S[MAX(x,y)]]=MIN(x,y);
+			E1[n]=E[k];
 			printf("%d %d\n",MIN(x,y),MAX(x,y));
 		}
-		int m = MIN(S[x],S[y]);
-		for(i=0;i<N;i++)
-			if(S[i]==S[x] || S[i] == S[y])
-				S[i] = m;
+	}
+   E1[n+1].i = INT_MAX; // this is a sign the table ended there
+	for(n=0;n<N;n++)
+	{
+		if(procRank%(2<<n)==(1<<n)) // i'm the kind of guy who likes to send!
+		{
+			MPI_Send(E1,N,edge_type,procRank-(1<<n),0,MPI_COMM_WORLD); // at most a tree so size O(N)
+		}
+		if(procRank%(2<<n)==0) // i'm the kind of guy who likes to receive!
+		{
+			MPI_Receive(E2,N,edge_type,procRank+(1<<n),0,MPI_COMM_WORLD);
+			for(i=0;i<N;i++)
+				S[i] = i;
+         i=0;j=0;k=0;
+			while(1)
+			{
+				if(weightcomp(E1[i],E2[j])) // E1[i] < E2[j]
+				{
+					
+				}
+			}
+		}
 	}
 
+	free(S);
+	free(E);
 
   } else { // Invalid algorithm name
     if (procRank == 0) {
