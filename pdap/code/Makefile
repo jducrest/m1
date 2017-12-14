@@ -18,6 +18,11 @@ graphpp:
 graphkp:
 	mpirun -np 5 ./mst graph.in kruskal-par
 
+graphkp1:
+	mpirun -np 1 ./mst graph.in kruskal-par
+
+graphkp2:
+	mpirun -np 2 ./mst graph.in kruskal-par
 simplep:
 	mpirun -np 1 ./mst simple.in prim-seq
 
