@@ -16,20 +16,8 @@ int j;
 int w;
 } edge;
 
-int sed_lex(int u, int v, int w, int u_, int v_, int w_) // answer first<second
-{
-	if(w<w_)
-		return 1;
-	if(w==w_ && MIN(u,v)<MIN(u_,v_))
-		return 1;
-	if(w==w_ && MIN(u,v)==MIN(u_,v_) && MAX(u,v)<MAX(u_,v_))
-		return 1;
 
-	return 0;
-}
-
-
-int weightcomp(const void* a, const void* b)
+int sed_lex(const void* a, const void* b)
 {
 	edge* a_ = (edge*)a;
 	edge* b_ = (edge*)b;
@@ -148,7 +136,15 @@ void computeMST(
 		int u,v,w;
 		for(i=1;i<N;i++)
 		{
-			if(!T[i] && sed_lex(Ne[i],i,D[i],umin,vmin,D[vmin]))
+			edge e1;
+			edge e2;
+			e1.i = Ne[i];
+			e1.j = i;
+			e1.w = D[i];
+			e2.i=umin;
+			e2.j=vmin;
+			e2.w = D[vmin];
+			if(!T[i] && sed_lex(&e2,&e1))
 			{
 				umin = Ne[i];
 				vmin = i;
@@ -218,7 +214,7 @@ void computeMST(
 			k++;
 		}
 	 }
-	 qsort(E,M,sizeof(edge),weightcomp);
+	 qsort(E,M,sizeof(edge),sed_lex);
 	 printf("QSORT:\n");
 	 //for(i=0;i<M;i++)
 	//	printf("%d %d %d\n", E[i].w, E[i].i, E[i].j);
@@ -387,10 +383,6 @@ void computeMST(
 	 /*               KRUSKAL PAR                 */
     /*               goto kp                     */
 	 /*********************************************/
-
-	 /* PHASE 1 : ******************************/
-	 /* Do Kruskal on subset of edges          */
-	 /******************************************/
 	 
 	 int Ns = procRank != numProcs - 1 ? ceil((float)N/numProcs) : N - ceil((float)N/numProcs)*(numProcs-1);
 	 int offset = procRank * ceil((float)N / numProcs);
@@ -401,8 +393,16 @@ void computeMST(
 	 edge* E  = malloc(sizeof(edge)*M);
 	 edge* E1 = malloc(sizeof(edge)*M);
 	 edge* E2 = malloc(sizeof(edge)*M);
-
-	 // we initialize T and E
+	 int first_time = 1;
+	 int K;
+	 while(1)
+	 {
+	 if(first_time)
+	 {
+	 /* PHASE 1 : **********************************/
+	 /* we initialize E using the adjacency matrix */
+	 /**********************************************/
+	 first_time = 0;
 	 k = 0;
 	 for(i=0;i<Ns;i++)
 	 for(j=i;j<N;j++)
@@ -415,10 +415,54 @@ void computeMST(
 			k++;
 		}
 	 }
-	 int K = k; // nb of edges
+	 E[k].i = INT_MAX;
+	 K = k;
+	 }
+	 else
+	 {
+	 /* PHASE 1 bis: ************************************************/
+	 /* we initialize E using E1 and E2                             */
+	 /* we do the return cards and see what happens method to get E */
+	 /***************************************************************/
+		i=0;j=0;k=0;
+		while(1)
+		{
+			if(E1[i].i==INT_MAX)
+			{
+				while(E2[j].i!=INT_MAX)
+				{
+					E[k]=E2[j];j++;k++;
+				}
+				break;
+			}
+			if(E2[j].i==INT_MAX)
+			{
+				while(E1[i].i!=INT_MAX)
+				{
+					E[k] = E1[k];i++;k++;
+				}
+				break;
+			}
+			if(sed_lex(&E1[i],&E2[j]))
+			{
+				E[k]=E2[i];i++;
+			}
+			else
+			{
+				E[k]=E1[j];j++;
+			}
+			k++;
+		}
+		K=k;
+	 }
+
+	 /* PHASE 2 : **********************************/
+	 /* we initialize S and go for it!             */
+	 /**********************************************/
+
 	 for(i=0;i<N;i++)
 		S[i]=i;
-	 qsort(E,M,sizeof(edge),weightcomp);
+	 qsort(E,K,sizeof(edge),sed_lex);
 	n=0;k=0;
 	while(n<N-1 && k<K)
 	{
@@ -439,28 +483,16 @@ void computeMST(
 		}
 	}
    E1[n+1].i = INT_MAX; // this is a sign the table ended there
-	for(n=0;n<N;n++)
+	if(procRank%(2<<n)==(1<<n)) // i'm the kind of guy who likes to send!
 	{
-		if(procRank%(2<<n)==(1<<n)) // i'm the kind of guy who likes to send!
-		{
-			MPI_Send(E1,N,edge_type,procRank-(1<<n),0,MPI_COMM_WORLD); // at most a tree so size O(N)
-		}
-		if(procRank%(2<<n)==0) // i'm the kind of guy who likes to receive!
-		{
-			MPI_Receive(E2,N,edge_type,procRank+(1<<n),0,MPI_COMM_WORLD);
-			for(i=0;i<N;i++)
-				S[i] = i;
-         i=0;j=0;k=0;
-			while(1)
-			{
-				if(weightcomp(E1[i],E2[j])) // E1[i] < E2[j]
-				{
-					
-				}
-			}
-		}
+		MPI_Send(E1,N,edge_type,procRank-(1<<n),0,MPI_COMM_WORLD); // at most a tree so size O(N)
 	}
-
+	if(procRank%(2<<n)==0) // i'm the kind of guy who likes to receive!
+	{
+		MPI_Recv(E2,N,edge_type,procRank+(1<<n),0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+	}
+	}
+	}
 	free(S);
 	free(E);
 

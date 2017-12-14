@@ -15,6 +15,9 @@ graphk:
 graphpp:
 	mpirun -np 5 ./mst graph.in prim-par
 
+graphkp:
+	mpirun -np 5 ./mst graph.in kruskal-par
+
 simplep:
 	mpirun -np 1 ./mst simple.in prim-seq
 

@@ -1,0 +1,2 @@
+MPI_allreduce
+MPI_Type_Contiguous
