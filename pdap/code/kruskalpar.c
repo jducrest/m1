@@ -10,12 +10,14 @@
 	 int i,j,k,n,min,imin;
 	 // S is the representant set, E the set of edges
 	 int*  S  = malloc(sizeof(int)*N);
-	 edge* E  = (edge*) malloc(sizeof(edge)*MAX(M,N));
-	 edge* E1 = (edge*) malloc(sizeof(edge)*N);
-	 edge* E2 = (edge*) malloc(sizeof(edge)*N);
+	 edge* E  = (edge*) malloc(sizeof(edge)*MAX(M,N+1));
+	 edge* E1 = (edge*) malloc(sizeof(edge)*(N+1));
+	 edge* E2 = (edge*) malloc(sizeof(edge)*(N+1));
 	 int first_time = 1;
 	 int K;
 	 n=0;
+	 E1[0].i = INT_MAX;
+	 E2[0].i = INT_MAX;
 	 while(1)
 	 {
 	 if(first_time)
@@ -26,12 +28,12 @@
 	 first_time = 0;
 	 k = 0;
 	 for(i=0;i<Ns;i++)
-	 for(j=i;j<N;j++)
+	 for(j=offset+i;j<N;j++)
 	 {
 		if(W(i,j)!=0)
 		{
-			E[k].i = i;
-			E[k].j = j;
+			E[k].i = MIN(i+offset,j);
+			E[k].j = MAX(i+offset,j);
 			E[k].w = W(i,j);
 			k++;
 		}
@@ -60,17 +62,21 @@
 			{
 				while(E1[i].i!=INT_MAX)
 				{
-					E[k] = E1[k];i++;k++;
+					E[k] = E1[i];i++;k++;
 				}
 				break;
 			}
-			if(sed_lex(&E1[i],&E2[j]))
+			if(sed_lex(&E1[i],&E2[j]) == sed_lex(&E2[j],&E1[i]))
 			{
-				E[k]=E2[i];i++;
+				E[k] = E2[j];i++;j++;	
+			}
+			else if(sed_lex(&E1[i],&E2[j])==1)
+			{
+				E[k]=E2[j];j++;
 			}
 			else
 			{
-				E[k]=E1[j];j++;
+				E[k]=E1[i];i++;
 			}
 			k++;
 		}
@@ -80,7 +86,8 @@
 	 /* PHASE 2 : **********************************/
 	 /* we initialize S and go for it!             */
 	 /**********************************************/
-
+	 if(procRank%(1<<n)==0)
+	 {
 	 for(i=0;i<N;i++)
 		S[i]=i;
 	 qsort(E,K,sizeof(edge),sed_lex);
@@ -99,33 +106,29 @@
 			S[S[MAX(x,y)]]=MIN(x,y);
 			E1[i]=E[k];
 			i++; // we found a good edge... happy =)
-			//printf("%d %d\n",MIN(x,y),MAX(x,y));
 		}
 		k++;// we prepare to look into next edge
 	}
    	E1[i].i = INT_MAX; // this is a sign the table ended there
-    if( ( 1 << n ) >= numProcs)
+    }
+	 if( ( 1 << n ) >= numProcs)
 		break;
 	if(procRank%(2<<n)==(1<<n)) // i'm the kind of guy who likes to send!
 	{
-		printf("I, %d try to send to %d!\n",procRank,procRank-(1<<n));
-		MPI_Send(E1,N-1,edge_type,procRank-(1<<n),0,MPI_COMM_WORLD); // at most a tree so size O(N)
-		printf("I, %d send my stuff!\n",procRank);
+		MPI_Send(E1,N,edge_type,procRank-(1<<n),0,MPI_COMM_WORLD); // at most a tree so size O(N)
+		break;
 	}
 	if(procRank%(2<<n)==0 && procRank+(1<<n) < numProcs) // i'm the kind of guy who likes to receive!
 	{
-		printf("I, %d try to recv from %d!\n",procRank,procRank+(1<<n));
-		MPI_Recv(E2,N-1,edge_type,procRank+(1<<n),0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-		printf("I, %d recv my stuff!\n",procRank);
+		MPI_Recv(E2,N,edge_type,procRank+(1<<n),0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 	}
-	MPI_Barrier(MPI_COMM_WORLD);
 	n++;
 	}
-
 	if(procRank==0)
 	{
 		for(i=0;i<N-1;i++)
-			printf("%d %d %d\n", E1[i].w, E1[i].i, E1[i].j);
+			printf("%d %d\n",E1[i].i,E1[i].j);
+			//printf("%d %d %d\n", E1[i].w, E1[i].i, E1[i].j);
 	}
 	
 	free(S);

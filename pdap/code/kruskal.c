@@ -41,7 +41,8 @@
 		{
 			n++; // we found a good edge... happy =)
 			S[S[MAX(x,y)]]=MIN(x,y);
-			printf("%d %d %d\n",E[k].w,E[k].i,E[k].j);
+			printf("%d %d\n",E[k].i,E[k].j);
+			//printf("%d %d %d\n",E[k].w,E[k].i,E[k].j);
 
 		}
 		k++;// we prepare to look into next edge

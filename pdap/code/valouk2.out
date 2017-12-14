@@ -1,4 +1,4 @@
-mpirun -np 1 ./mst valou.in kruskal-seq
+mpirun -np 10 ./mst valou.in kruskal-par
 1 70 693
 1 157 767
 1 353 598
@@ -998,4 +998,4 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 607 398 682
 623 176 614
 710 736 918
-computeMST took 3.042936e-03 seconds.
+computeMST took 3.594160e-03 seconds.

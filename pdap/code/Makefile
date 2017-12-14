@@ -40,3 +40,9 @@ simplepp:
 
 valoupp:
 	mpirun -np 10 ./mst valou.in prim-par
+
+
+simplekp:
+	mpirun -np 2 ./mst simple.in kruskal-par
+valoukp:
+	mpirun -np 10 ./mst valou.in kruskal-par

@@ -1,4 +1,4 @@
-mpirun -np 1 ./mst valou.in kruskal-seq
+mpirun -np 10 ./mst valou.in kruskal-par
 70 693
 157 767
 353 598
@@ -141,6 +141,7 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 18 462
 118 954
 167 601
+415 760
 42 836
 262 979
 342 469
@@ -444,6 +445,7 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 102 233
 132 286
 203 559
+829 220
 3 478
 104 996
 147 629
@@ -632,7 +634,6 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 82 260
 133 341
 182 288
-194 983
 631 716
 91 679
 139 583
@@ -734,6 +735,7 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 243 417
 371 932
 435 892
+253 231
 468 615
 106 955
 367 373
@@ -850,7 +852,6 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 442 510
 34 396
 50 617
-415 661
 491 830
 87 293
 171 646
@@ -877,6 +878,7 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 86 453
 496 667
 800 967
+827 546
 186 545
 276 543
 475 617
@@ -903,7 +905,6 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 51 961
 59 465
 632 938
-207 386
 269 720
 224 782
 237 977
@@ -989,7 +990,6 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 420 535
 170 814
 312 935
-546 821
 453 738
 19 884
 235 680
@@ -998,4 +998,4 @@ mpirun -np 1 ./mst valou.in kruskal-seq
 398 682
 176 614
 736 918
-computeMST took 3.035784e-03 seconds.
+computeMST took 3.840208e-03 seconds.
