@@ -4,6 +4,15 @@
 	/*                                   */
 	/*************************************/
 
+	/*********************************************************/
+	/* WHY I DIDN'T BOTHER WITH OPTIMISATIONS                */
+	/* Here my algo is of complexity O(N^2), it is optimal   */
+	/* here because we are using an adjacency matrix as      */
+	/* data structure. Thus we have to read O(N^2) slots     */
+	/* anyway so I don't need to bother with "smart" heap    */
+	/* stuff ... =)                                          */
+	/*********************************************************/
+
 	int i,j,n,umin,vmin;
 	edge e,emin;
 	int* T=malloc(sizeof(int)*N);
