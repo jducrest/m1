@@ -1,0 +1,8 @@
+host-0.nimportequoi.fr
+host-1.nimportequoi.fr
+host-2.nimportequoi.fr
+host-3.nimportequoi.fr
+host-4.nimportequoi.fr
+host-5.nimportequoi.fr
+host-6.nimportequoi.fr
+host-7.nimportequoi.fr

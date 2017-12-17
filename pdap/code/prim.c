@@ -29,7 +29,12 @@
 	/**************************************************/
 	/* way easier to see it as a graph with           */
 	/* infinite distance between non-connected edges. */
+	/*                                                */
+	/* it doesn't change the complexity which was     */
+	/* already O(N^2) because anyway we need to read  */
+	/* all slots once                                 */
 	/**************************************************/
+
 	for(i=0;i<N;i++)
 		for(j=0;j<N;j++)
 			if(W(i,j)==0)
@@ -75,9 +80,7 @@
 				Ne[j] = i;
 			}
 			if(W(i,j)==D[j])
-			{
 				Ne[j] = MIN(i,Ne[j]);
-			}
 		}
 	 }
 

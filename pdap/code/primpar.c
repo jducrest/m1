@@ -4,6 +4,7 @@
 	/*     goto pp                       */
 	/*************************************/
 	int Ns = procRank != numProcs - 1 ? ceil((float)N/numProcs) : N - ceil((float)N/numProcs)*(numProcs-1);
+	int Ns_gen = ceil((float)N/numProcs);
 	int offset = procRank * ceil((float)N / numProcs);
 
 	int i,j,n;
@@ -65,7 +66,7 @@
 		if(procRank==0)
 			printf("%d %d\n",MIN(emin.i,emin.j),MAX(emin.i,emin.j));
 		
-		if(emin.i/Ns==procRank) //it's somebody from this proc that was chosen
+		if(emin.i/Ns_gen==procRank) //it's somebody from this proc that was chosen
 		   T[emin.i-offset]=1;
 
 		for(j=0;j<Ns;j++)

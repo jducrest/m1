@@ -25,7 +25,7 @@
 			k++;
 		}
 	}
-	qsort(E,M,sizeof(edge),sed_lex);
+	qsort(E,k,sizeof(edge),sed_lex);
 	n=0;k=0;
 	while(n<N-1)
 	{
@@ -39,7 +39,7 @@
 		if(S[x]!=S[y])
 		{
 			S[S[MAX(x,y)]]=MIN(x,y);
-			printf("%d %d\n",E[k].i,E[k].j);
+			printf("%d %d \n",E[k].i,E[k].j);
 			n++;
 		}
 		k++;
